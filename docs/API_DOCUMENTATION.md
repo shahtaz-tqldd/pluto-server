@@ -94,7 +94,7 @@ Import both files into Postman, then set these variables as you get real IDs fro
 
 Request body highlights:
 
-- `register`: `role`, `name`, `email` or `phone`, `password`, `confirm_password`
+- `register`: optional `role` (`ADOPTER` by default, or `RESCUER`), `name`, `email` or `phone`, `password`, `confirm_password`
 - `login`: `email`, `password`
 - `refresh`: `refresh`
 - `user-details/update`: multipart or form-data supported

@@ -18,6 +18,64 @@ from auth.models import (
 )
 
 
+class ClientRegistrationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_register_defaults_to_adopter(self):
+        response = self.client.post(
+            "/api/v1/auth/register/",
+            {
+                "name": "Default Adopter",
+                "email": "default-adopter@example.com",
+                "password": "Password123!",
+                "confirm_password": "Password123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        user = User.objects.get(email="default-adopter@example.com")
+        self.assertEqual(user.role, UserRole.ADOPTER)
+        self.assertTrue(hasattr(user, "adopter_profile"))
+        self.assertEqual(response.data["data"]["role"], UserRole.ADOPTER)
+
+    def test_register_can_create_rescuer(self):
+        response = self.client.post(
+            "/api/v1/auth/register/",
+            {
+                "role": UserRole.RESCUER,
+                "name": "Rescue User",
+                "email": "rescuer-signup@example.com",
+                "password": "Password123!",
+                "confirm_password": "Password123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        user = User.objects.get(email="rescuer-signup@example.com")
+        self.assertEqual(user.role, UserRole.RESCUER)
+        self.assertTrue(hasattr(user, "rescuer_profile"))
+        self.assertEqual(response.data["data"]["role"], UserRole.RESCUER)
+
+    def test_register_rejects_admin_role(self):
+        response = self.client.post(
+            "/api/v1/auth/register/",
+            {
+                "role": UserRole.ADMIN,
+                "name": "Public Admin",
+                "email": "public-admin@example.com",
+                "password": "Password123!",
+                "confirm_password": "Password123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(User.objects.filter(email="public-admin@example.com").exists())
+
+
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class AdminInvitationFlowTests(TestCase):
     def setUp(self):
