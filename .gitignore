@@ -23,8 +23,6 @@ staticfiles/
 
 # Ignore local settings and environment variables
 .env
-*.env
-.env.*
 config/settings/local.py
 config/settings/dev.py
 
