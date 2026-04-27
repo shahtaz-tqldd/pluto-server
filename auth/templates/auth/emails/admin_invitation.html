@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pluto Admin Invitation</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4efe8;font-family:Georgia,'Times New Roman',serif;color:#1f1a17;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f4efe8;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background-color:#fffdf9;border:1px solid #e7dccf;">
+          <tr>
+            <td style="padding:20px 28px;background:linear-gradient(135deg,#1f1a17 0%,#3a2f28 100%);color:#f8f3ed;">
+              <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:0.8;">pluto Admin</div>
+              <h1 style="margin:12px 0 0;font-size:32px;line-height:1.2;font-weight:700;">You have been invited</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;">
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hello {{ recipient_name }},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                <strong>{{ inviter_name }}</strong> has invited you to join the pluto admin panel.
+              </p>
+              {% if job_title %}
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Your assigned job title is <strong>{{ job_title }}</strong>.
+              </p>
+              {% endif %}
+              <p style="margin:0 0 24px;font-size:16px;line-height:1.7;">
+                This invitation expires on <strong>{{ expires_at }}</strong>.
+              </p>
+
+              {% if permissions %}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 24px;border-collapse:collapse;">
+                <tr>
+                  <td style="padding:14px 16px;background-color:#f7f1e8;border:1px solid #eadfce;">
+                    <div style="font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#6b584b;margin-bottom:12px;">Granted Permissions</div>
+                    {% for permission in permissions %}
+                    <div style="padding:12px 0;{% if not forloop.last %}border-bottom:1px solid #eadfce;{% endif %}">
+                      <div style="font-size:16px;font-weight:700;color:#1f1a17;">{{ permission.module }}</div>
+                      <div style="margin-top:4px;font-size:14px;line-height:1.6;color:#5b4c41;">{{ permission.actions }}</div>
+                    </div>
+                    {% endfor %}
+                  </td>
+                </tr>
+              </table>
+              {% endif %}
+
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">
+                <tr>
+                  <td style="border-radius:0;background-color:#b45a2c;">
+                    <a href="{{ registration_url }}" style="display:inline-block;padding:14px 22px;font-size:14px;font-weight:700;letter-spacing:0.4px;color:#fffdf9;text-decoration:none;text-transform:uppercase;">Complete Setup</a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 8px;font-size:13px;line-height:1.7;color:#6b584b;">If the button does not work, open this link:</p>
+              <p style="margin:0;font-size:13px;line-height:1.7;word-break:break-all;">
+                <a href="{{ registration_url }}" style="color:#8d451f;text-decoration:underline;">{{ registration_url }}</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

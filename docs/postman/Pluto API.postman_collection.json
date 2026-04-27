@@ -1,0 +1,766 @@
+{
+  "info": {
+    "_postman_id": "56e48938-8c14-4a63-951b-f6ce44629bdd",
+    "name": "Pluto API",
+    "description": "Postman collection for the Pluto server API. Import with the Pluto Local environment in docs/postman/.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:9065"
+    }
+  ],
+  "item": [
+    {
+      "name": "System Docs",
+      "item": [
+        {
+          "name": "OpenAPI Schema",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/schema/",
+            "description": "Raw OpenAPI schema exposed by drf-spectacular."
+          }
+        },
+        {
+          "name": "Swagger UI",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/docs/",
+            "description": "Browser-based Swagger UI."
+          }
+        },
+        {
+          "name": "ReDoc",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/redoc/",
+            "description": "Browser-based ReDoc."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Client Auth",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADOPTER\",\n  \"name\": \"Jane Adopter\",\n  \"email\": \"jane@example.com\",\n  \"phone\": \"+15550001111\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/auth/register/",
+            "description": "Public registration for ADOPTER or RESCUER users."
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.data) {",
+                  "  if (json.data.access_token) pm.environment.set('accessToken', json.data.access_token);",
+                  "  if (json.data.refresh_token) pm.environment.set('refreshToken', json.data.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"jane@example.com\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login/",
+            "description": "Returns access_token and refresh_token."
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.access) pm.environment.set('accessToken', json.access);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/auth/refresh/"
+          }
+        },
+        {
+          "name": "Current User Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/auth/user-details/"
+          }
+        },
+        {
+          "name": "Update User Details",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Jane Updated",
+                  "type": "text"
+                },
+                {
+                  "key": "phone",
+                  "value": "+15550002222",
+                  "type": "text"
+                },
+                {
+                  "key": "bio",
+                  "value": "Pet lover",
+                  "type": "text"
+                },
+                {
+                  "key": "location",
+                  "value": "Dhaka",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/auth/user-details/update/",
+            "description": "Multipart/form-data supported."
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"password123\",\n  \"new_password\": \"newpassword123\",\n  \"confirm_password\": \"newpassword123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/auth/change-password/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Auth",
+      "item": [
+        {
+          "name": "List Adopters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/auth/adopter/list/",
+            "description": "Requires admin access."
+          }
+        },
+        {
+          "name": "List Admin Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/auth/admin-users/",
+            "description": "Requires superadmin."
+          }
+        },
+        {
+          "name": "Update Admin User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_title\": \"Operations Admin\",\n  \"permissions\": [\n    {\n      \"module\": \"PET_LISTING_MANAGEMENT\",\n      \"actions\": [\"VIEW\", \"UPDATE\"]\n    },\n    {\n      \"module\": \"ADOPTION_MANAGEMENT\",\n      \"actions\": [\"VIEW\", \"UPDATE\"]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/admin/auth/admin-users/{{adminId}}/"
+          }
+        },
+        {
+          "name": "Delete Admin User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/auth/admin-users/{{adminId}}/"
+          }
+        },
+        {
+          "name": "Send Admin Invitation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ops-admin@example.com\",\n  \"job_title\": \"Operations Admin\",\n  \"permissions\": [\n    {\n      \"module\": \"USER_MANAGEMENT\",\n      \"actions\": [\"VIEW\"]\n    },\n    {\n      \"module\": \"PET_LISTING_MANAGEMENT\",\n      \"actions\": [\"VIEW\", \"UPDATE\"]\n    }\n  ],\n  \"expires_in_hours\": 48\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/admin/auth/send-invitation/"
+          }
+        },
+        {
+          "name": "Verify Admin Invitation",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/auth/verify-invitation/?token={{inviteToken}}"
+          }
+        },
+        {
+          "name": "Admin Register From Invitation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.data) {",
+                  "  if (json.data.access_token) pm.environment.set('accessToken', json.data.access_token);",
+                  "  if (json.data.refresh_token) pm.environment.set('refreshToken', json.data.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{inviteToken}}\",\n  \"name\": \"Invited Admin\",\n  \"phone\": \"+15550003333\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/admin/auth/admin-register/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Adopters",
+      "item": [
+        {
+          "name": "My Adopter Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/adopters/me/"
+          }
+        },
+        {
+          "name": "Update Adopter Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Jane Adopter",
+                  "type": "text"
+                },
+                {
+                  "key": "location",
+                  "value": "Dhaka",
+                  "type": "text"
+                },
+                {
+                  "key": "home_type",
+                  "value": "Apartment",
+                  "type": "text"
+                },
+                {
+                  "key": "pet_experience",
+                  "value": "Raised cats for 3 years",
+                  "type": "text"
+                },
+                {
+                  "key": "preferred_pet_type",
+                  "value": "Cat",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/adopters/me/"
+          }
+        },
+        {
+          "name": "My Adoption Requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/adopters/adoption-requests/"
+          }
+        },
+        {
+          "name": "Create Adoption Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"intention\": \"Looking for a calm indoor cat\",\n  \"message\": \"I have a quiet apartment and prior pet experience.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/adopters/pets/{{petId}}/adoption-request/"
+          }
+        },
+        {
+          "name": "My Conversations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/adopters/conversations/"
+          }
+        },
+        {
+          "name": "Public Adopter Profile",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/adopters/public/{{adopterId}}/"
+          }
+        },
+        {
+          "name": "List Adopter Reviews",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/adopters/public/{{adopterId}}/reviews/"
+          }
+        },
+        {
+          "name": "Create Adopter Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"message\": \"Communicative and responsible adopter.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/adopters/public/{{adopterId}}/reviews/",
+            "description": "Requires RESCUER or ADMIN user."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rescuers",
+      "item": [
+        {
+          "name": "My Rescuer Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/rescuers/me/"
+          }
+        },
+        {
+          "name": "Update Rescuer Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Rescue Team",
+                  "type": "text"
+                },
+                {
+                  "key": "organization_name",
+                  "value": "Pluto Rescue",
+                  "type": "text"
+                },
+                {
+                  "key": "experience_years",
+                  "value": "5",
+                  "type": "text"
+                },
+                {
+                  "key": "location",
+                  "value": "Dhaka",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/rescuers/me/"
+          }
+        },
+        {
+          "name": "Rescuer Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/rescuers/dashboard/"
+          }
+        },
+        {
+          "name": "Public Rescuer Profile",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/rescuers/public/{{rescuerId}}/"
+          }
+        },
+        {
+          "name": "List Rescuer Reviews",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/rescuers/public/{{rescuerId}}/reviews/"
+          }
+        },
+        {
+          "name": "Create Rescuer Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"message\": \"Helpful and transparent rescue process.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/rescuers/public/{{rescuerId}}/reviews/",
+            "description": "Requires ADOPTER or ADMIN user."
+          }
+        },
+        {
+          "name": "Rescuer Adoption Request Inbox",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/rescuers/adoption-requests/"
+          }
+        },
+        {
+          "name": "Accept Adoption Request",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/rescuers/adoption-requests/{{requestId}}/accept/"
+          }
+        },
+        {
+          "name": "Reject Adoption Request",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/rescuers/adoption-requests/{{requestId}}/reject/"
+          }
+        },
+        {
+          "name": "Rescuer Conversations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/rescuers/conversations/"
+          }
+        },
+        {
+          "name": "Mark Pet Adopted",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/rescuers/pets/{{petId}}/mark-adopted/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pets",
+      "item": [
+        {
+          "name": "Pet Feed",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/pets/feed/?page=1&page_size=10&available_only=true&sort=latest",
+            "description": "Supports search, species, breed, location, available_only, nearby, sort, page, page_size."
+          }
+        },
+        {
+          "name": "List Pets",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/pets/"
+          }
+        },
+        {
+          "name": "Create Pet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Milo\",\n  \"species\": \"CAT\",\n  \"breed\": \"Domestic Shorthair\",\n  \"gender\": \"MALE\",\n  \"age_months\": 18,\n  \"size\": \"SMALL\",\n  \"color\": \"Orange\",\n  \"vaccinated\": true,\n  \"sterilized\": true,\n  \"medical_notes\": \"Healthy\",\n  \"temperament\": \"Friendly\",\n  \"story\": \"Rescued from the street\",\n  \"current_location\": \"Dhaka\",\n  \"rescue_location\": \"Banani\",\n  \"status\": \"AVAILABLE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/pets/",
+            "description": "If you need image upload, switch this request body to multipart/form-data and send repeated images fields as files."
+          }
+        },
+        {
+          "name": "Pet Detail",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/pets/{{petId}}/"
+          }
+        },
+        {
+          "name": "Update Pet",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ON_HOLD\",\n  \"current_location\": \"Gulshan\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/pets/{{petId}}/",
+            "description": "Supports remove_image_ids and new images on multipart updates."
+          }
+        },
+        {
+          "name": "Delete Pet",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/pets/{{petId}}/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Messages",
+      "item": [
+        {
+          "name": "Conversation Detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/messages/conversations/{{conversationId}}/"
+          }
+        },
+        {
+          "name": "List Messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/messages/conversations/{{conversationId}}/messages/"
+          }
+        },
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Hi, I wanted to ask about Milo's temperament.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/messages/conversations/{{conversationId}}/messages/"
+          }
+        }
+      ]
+    }
+  ]
+}

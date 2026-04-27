@@ -1,0 +1,147 @@
+name: pluto
+
+services:
+  django-wsgi:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: python manage.py runserver 0.0.0.0:8055
+    env_file:
+      - ../.env
+    environment:
+      APP_ENV: dev
+      DJANGO_RUN_MIGRATIONS: "1"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CHANNELS_REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ..:/app
+    ports:
+      - "${WSGI_PORT:-9065}:8055"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - pluto-dev
+
+  django-asgi:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: uvicorn app.asgi:application --host 0.0.0.0 --port 8056 --reload
+    env_file:
+      - ../.env
+    environment:
+      APP_ENV: dev
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CHANNELS_REDIS_URL: redis://redis:6379/0
+      WATCHFILES_FORCE_POLLING: "true"
+    volumes:
+      - ..:/app
+    ports:
+      - "${ASGI_PORT:-9066}:8056"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - pluto-dev
+
+  celery-worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: celery -A app worker -l info
+    env_file:
+      - ../.env
+    environment:
+      APP_ENV: dev
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CHANNELS_REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ..:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - pluto-dev
+
+  celery-beat:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: celery -A app beat -l info
+    env_file:
+      - ../.env
+    environment:
+      APP_ENV: dev
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CHANNELS_REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ..:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - pluto-dev
+
+  postgres:
+    image: postgres:16-alpine
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_DB: ${DB_NAME:-pluto_db}
+      POSTGRES_USER: ${DB_USER:-pluto_db_owner}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-pluto_db_password}
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_FORWARD_PORT:-5545}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-pluto_db_owner} -d ${DB_NAME:-pluto_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      pluto-dev:
+        aliases:
+          - postgres
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_FORWARD_PORT:-6485}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      pluto-dev:
+        aliases:
+          - redis
+
+volumes:
+  postgres_dev_data:
+
+networks:
+  pluto-dev:
+    driver: bridge

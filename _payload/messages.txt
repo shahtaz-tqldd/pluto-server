@@ -1,0 +1,20 @@
+
+// Broadcast payload format:
+{
+  "type": "message",
+  "data": {
+    "id": "...",
+    "conversation_id": "...",
+    "sender": "...",
+    "sender_name": "...",
+    "sender_role": "ADOPTER",
+    "body": "Hello",
+    "created_at": "..."
+  }
+}
+
+// Websocket message format:
+{
+  "type": "message",
+  "body": "Hello"
+}

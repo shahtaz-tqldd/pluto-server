@@ -1,0 +1,13 @@
+Hello {{ recipient_name }},
+
+{{ inviter_name }} has invited you to join the pluto admin panel.
+{% if job_title %}Assigned job title: {{ job_title }}
+{% endif %}This invitation expires on {{ expires_at }}.
+
+{% if permissions %}
+Granted permissions:
+{% for permission in permissions %}- {{ permission.module }}: {{ permission.actions }}
+{% endfor %}
+{% endif %}
+Complete your account setup here:
+{{ registration_url }}
