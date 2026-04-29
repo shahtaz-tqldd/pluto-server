@@ -1,5 +1,7 @@
 from datetime import timedelta
+from unittest.mock import patch
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -58,6 +60,132 @@ class ClientRegistrationTests(TestCase):
         self.assertEqual(user.role, UserRole.RESCUER)
         self.assertTrue(hasattr(user, "rescuer_profile"))
         self.assertEqual(response.data["data"]["role"], UserRole.RESCUER)
+
+    def test_register_accepts_username_without_email(self):
+        response = self.client.post(
+            "/api/v1/auth/register/",
+            {
+                "name": "Username User",
+                "username": "UsernameUser",
+                "password": "Password123!",
+                "confirm_password": "Password123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        user = User.objects.get(username="usernameuser")
+        self.assertIsNone(user.email)
+        self.assertEqual(response.data["data"]["username"], "usernameuser")
+
+    def test_register_requires_email_or_username(self):
+        response = self.client.post(
+            "/api/v1/auth/register/",
+            {
+                "name": "No Identifier",
+                "phone": "+15551234568",
+                "password": "Password123!",
+                "confirm_password": "Password123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("email", response.data["errors"])
+
+    def test_login_accepts_username_or_email(self):
+        user = User.objects.create_user(
+            username="loginuser",
+            email="login-user@example.com",
+            password="Password123!",
+            name="Login User",
+        )
+
+        username_response = self.client.post(
+            "/api/v1/auth/login/",
+            {"username": "loginuser", "password": "Password123!"},
+            format="json",
+        )
+        email_response = self.client.post(
+            "/api/v1/auth/login/",
+            {"email": "login-user@example.com", "password": "Password123!"},
+            format="json",
+        )
+
+        self.assertEqual(username_response.status_code, 200)
+        self.assertEqual(email_response.status_code, 200)
+        self.assertIn("access_token", username_response.data["data"])
+        user.refresh_from_db()
+        self.assertIsNotNone(user.last_login)
+
+    def test_profile_update_rejects_bio_over_80_words(self):
+        user = User.objects.create_user(
+            username="bio-user",
+            password="Password123!",
+            name="Bio User",
+        )
+        self.client.force_authenticate(user)
+
+        response = self.client.patch(
+            "/api/v1/auth/user-details/update/",
+            {"bio": " ".join(["word"] * 81)},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("bio", response.data["errors"])
+
+    @patch("auth.api.v1.client.serializers.upload_image")
+    def test_profile_update_uploads_cover_file(self, upload_image_mock):
+        upload_image_mock.return_value = {
+            "url": "https://cdn.example.com/profile-cover.jpg",
+            "public_id": "profile-cover",
+        }
+        user = User.objects.create_user(
+            username="cover-user",
+            password="Password123!",
+            name="Cover User",
+        )
+        self.client.force_authenticate(user)
+        cover_file = SimpleUploadedFile("cover.jpg", b"cover-bytes", content_type="image/jpeg")
+
+        response = self.client.patch(
+            "/api/v1/auth/user-details/update/",
+            {"cover_file": cover_file},
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        user.refresh_from_db()
+        self.assertEqual(user.cover, "https://cdn.example.com/profile-cover.jpg")
+        self.assertEqual(response.data["data"]["cover"], "https://cdn.example.com/profile-cover.jpg")
+        upload_image_mock.assert_called_once()
+
+    @patch("auth.api.v1.client.serializers.upload_image")
+    def test_profile_update_uploads_avatar_from_avatar_field(self, upload_image_mock):
+        upload_image_mock.return_value = {
+            "url": "https://cdn.example.com/profile-avatar.jpg",
+            "public_id": "profile-avatar",
+        }
+        user = User.objects.create_user(
+            username="avatar-user",
+            password="Password123!",
+            name="Avatar User",
+        )
+        self.client.force_authenticate(user)
+        avatar_file = SimpleUploadedFile("avatar.jpg", b"avatar-bytes", content_type="image/jpeg")
+
+        response = self.client.patch(
+            "/api/v1/auth/user-details/update/",
+            {"avatar": avatar_file},
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        user.refresh_from_db()
+        self.assertEqual(user.avatar, "https://cdn.example.com/profile-avatar.jpg")
+        self.assertEqual(response.data["data"]["avatar"], "https://cdn.example.com/profile-avatar.jpg")
+        upload_image_mock.assert_called_once()
 
     def test_register_rejects_admin_role(self):
         response = self.client.post(

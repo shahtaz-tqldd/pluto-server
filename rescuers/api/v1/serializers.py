@@ -38,9 +38,11 @@ class RescuerAccountSerializer(serializers.ModelSerializer):
             "id",
             "role",
             "name",
+            "username",
             "email",
             "phone",
             "avatar",
+            "cover",
             "bio",
             "location",
             "is_verified",
@@ -54,6 +56,7 @@ class RescuerAccountSerializer(serializers.ModelSerializer):
 
 class RescuerAccountUpdateSerializer(serializers.ModelSerializer):
     avatar_file = serializers.FileField(write_only=True, required=False, allow_null=True)
+    cover_file = serializers.FileField(write_only=True, required=False, allow_null=True)
     organization_name = serializers.CharField(required=False, allow_blank=True)
     experience_years = serializers.IntegerField(required=False, min_value=0)
     verification_status = serializers.ChoiceField(choices=RescuerVerificationStatus.choices, required=False)
@@ -64,29 +67,47 @@ class RescuerAccountUpdateSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             "name",
+            "username",
             "email",
             "phone",
             "bio",
             "location",
             "avatar",
             "avatar_file",
+            "cover",
+            "cover_file",
             "organization_name",
             "experience_years",
             "verification_status",
             "successful_adoptions",
             "response_rate",
         )
-        read_only_fields = ("avatar",)
+        read_only_fields = ("avatar", "cover")
+
+    def validate_username(self, value):
+        if value in (None, ""):
+            return None
+        username = value.strip().lower()
+        if not username:
+            return None
+        queryset = User.objects.filter(username__iexact=username)
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError("A user with this username already exists.")
+        return username
 
     def validate(self, attrs):
         email = attrs.get("email", self.instance.email if self.instance else None)
+        username = attrs.get("username", self.instance.username if self.instance else None)
         phone = attrs.get("phone", self.instance.phone if self.instance else None)
-        if not email and not phone:
-            raise serializers.ValidationError({"email": "Either email or phone is required."})
+        if not email and not username and not phone:
+            raise serializers.ValidationError({"email": "Either email, username, or phone is required."})
         return attrs
 
     def update(self, instance, validated_data):
         avatar_file = validated_data.pop("avatar_file", serializers.empty)
+        cover_file = validated_data.pop("cover_file", serializers.empty)
         profile_data = {
             key: validated_data.pop(key)
             for key in (
@@ -103,19 +124,20 @@ class RescuerAccountUpdateSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
 
         if avatar_file is not serializers.empty:
-            if avatar_file is None:
-                if instance.avatar:
-                    delete_image(image_url=instance.avatar)
-                instance.avatar = ""
-            else:
-                if instance.avatar:
-                    delete_image(image_url=instance.avatar)
-                upload = upload_image(
-                    avatar_file,
-                    folder=f"{settings.CLOUDINARY_FOLDER}/users/rescuers",
-                    public_id=self._build_avatar_public_id(instance),
-                )
-                instance.avatar = upload["url"]
+            instance.avatar = self._handle_image_upload(
+                image_file=avatar_file,
+                current_url=instance.avatar,
+                folder=f"{settings.CLOUDINARY_FOLDER}/users/rescuers",
+                public_id=self._build_image_public_id(instance, "avatar"),
+            )
+
+        if cover_file is not serializers.empty:
+            instance.cover = self._handle_image_upload(
+                image_file=cover_file,
+                current_url=instance.cover,
+                folder=f"{settings.CLOUDINARY_FOLDER}/users/rescuers",
+                public_id=self._build_image_public_id(instance, "cover"),
+            )
 
         instance.save()
         instance.ensure_role_profile()
@@ -123,9 +145,20 @@ class RescuerAccountUpdateSerializer(serializers.ModelSerializer):
             RescuerProfile.objects.update_or_create(user=instance, defaults=profile_data)
         return instance
 
-    def _build_avatar_public_id(self, user):
-        base_name = slugify(user.name or user.email or user.phone or "rescuer-avatar")
-        return base_name or f"rescuer-avatar-{uuid4().hex[:8]}"
+    def _handle_image_upload(self, image_file, current_url, folder, public_id):
+        if image_file is None:
+            if current_url:
+                delete_image(image_url=current_url)
+            return ""
+
+        if current_url:
+            delete_image(image_url=current_url)
+        upload = upload_image(image_file, folder=folder, public_id=public_id)
+        return upload["url"]
+
+    def _build_image_public_id(self, user, image_type):
+        base_name = slugify(user.username or user.name or user.email or user.phone or f"rescuer-{image_type}")
+        return base_name or f"rescuer-{image_type}-{uuid4().hex[:8]}"
 
 
 class RescuerPetSerializer(PetSerializer):
@@ -211,7 +244,9 @@ class PublicRescuerSummarySerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "name",
+            "username",
             "avatar",
+            "cover",
             "bio",
             "location",
             "is_verified",

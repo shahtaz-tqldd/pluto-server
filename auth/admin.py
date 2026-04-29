@@ -15,13 +15,13 @@ from auth.models import (
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     ordering = ("-created_at",)
-    list_display = ("name", "email", "phone", "role", "status", "is_verified", "is_staff", "is_active")
-    search_fields = ("name", "email", "phone", "location")
+    list_display = ("name", "username", "email", "phone", "role", "status", "is_verified", "is_staff", "is_active")
+    search_fields = ("name", "username", "email", "phone", "location")
     readonly_fields = ("id", "date_joined", "created_at", "updated_at", "last_login")
 
     fieldsets = (
-        ("Credentials", {"fields": ("email", "phone", "password")}),
-        ("Profile", {"fields": ("name", "avatar", "bio", "location", "is_verified")}),
+        ("Credentials", {"fields": ("username", "email", "phone", "password")}),
+        ("Profile", {"fields": ("name", "avatar", "cover", "bio", "location", "is_verified")}),
         ("Access", {"fields": ("role", "status", "is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("Important dates", {"fields": ("last_login", "date_joined", "created_at", "updated_at")}),
     )
@@ -31,7 +31,7 @@ class UserAdmin(BaseUserAdmin):
             None,
             {
                 "classes": ("wide",),
-                "fields": ("email", "phone", "name", "password1", "password2", "role", "status"),
+                "fields": ("username", "email", "phone", "name", "password1", "password2", "role", "status"),
             },
         ),
     )

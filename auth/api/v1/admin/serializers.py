@@ -32,8 +32,10 @@ class AdopterListSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "name",
+            "username",
             "email",
             "phone",
+            "cover",
             "location",
             "status",
             "is_verified",
@@ -58,8 +60,10 @@ class AdminUserListSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "name",
+            "username",
             "email",
             "phone",
+            "cover",
             "status",
             "is_verified",
             "is_active",

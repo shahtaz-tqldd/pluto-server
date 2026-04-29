@@ -32,9 +32,11 @@ class AdopterAccountSerializer(serializers.ModelSerializer):
             "id",
             "role",
             "name",
+            "username",
             "email",
             "phone",
             "avatar",
+            "cover",
             "bio",
             "location",
             "is_verified",
@@ -48,6 +50,7 @@ class AdopterAccountSerializer(serializers.ModelSerializer):
 
 class AdopterAccountUpdateSerializer(serializers.ModelSerializer):
     avatar_file = serializers.FileField(write_only=True, required=False, allow_null=True)
+    cover_file = serializers.FileField(write_only=True, required=False, allow_null=True)
     home_type = serializers.CharField(required=False, allow_blank=True)
     pet_experience = serializers.CharField(required=False, allow_blank=True)
     preferred_pet_type = serializers.CharField(required=False, allow_blank=True)
@@ -56,27 +59,45 @@ class AdopterAccountUpdateSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             "name",
+            "username",
             "email",
             "phone",
             "bio",
             "location",
             "avatar",
             "avatar_file",
+            "cover",
+            "cover_file",
             "home_type",
             "pet_experience",
             "preferred_pet_type",
         )
-        read_only_fields = ("avatar",)
+        read_only_fields = ("avatar", "cover")
+
+    def validate_username(self, value):
+        if value in (None, ""):
+            return None
+        username = value.strip().lower()
+        if not username:
+            return None
+        queryset = User.objects.filter(username__iexact=username)
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError("A user with this username already exists.")
+        return username
 
     def validate(self, attrs):
         email = attrs.get("email", self.instance.email if self.instance else None)
+        username = attrs.get("username", self.instance.username if self.instance else None)
         phone = attrs.get("phone", self.instance.phone if self.instance else None)
-        if not email and not phone:
-            raise serializers.ValidationError({"email": "Either email or phone is required."})
+        if not email and not username and not phone:
+            raise serializers.ValidationError({"email": "Either email, username, or phone is required."})
         return attrs
 
     def update(self, instance, validated_data):
         avatar_file = validated_data.pop("avatar_file", serializers.empty)
+        cover_file = validated_data.pop("cover_file", serializers.empty)
         profile_data = {
             key: validated_data.pop(key)
             for key in ("home_type", "pet_experience", "preferred_pet_type")
@@ -87,19 +108,20 @@ class AdopterAccountUpdateSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
 
         if avatar_file is not serializers.empty:
-            if avatar_file is None:
-                if instance.avatar:
-                    delete_image(image_url=instance.avatar)
-                instance.avatar = ""
-            else:
-                if instance.avatar:
-                    delete_image(image_url=instance.avatar)
-                upload = upload_image(
-                    avatar_file,
-                    folder=f"{settings.CLOUDINARY_FOLDER}/users/adopters",
-                    public_id=self._build_avatar_public_id(instance),
-                )
-                instance.avatar = upload["url"]
+            instance.avatar = self._handle_image_upload(
+                image_file=avatar_file,
+                current_url=instance.avatar,
+                folder=f"{settings.CLOUDINARY_FOLDER}/users/adopters",
+                public_id=self._build_image_public_id(instance, "avatar"),
+            )
+
+        if cover_file is not serializers.empty:
+            instance.cover = self._handle_image_upload(
+                image_file=cover_file,
+                current_url=instance.cover,
+                folder=f"{settings.CLOUDINARY_FOLDER}/users/adopters",
+                public_id=self._build_image_public_id(instance, "cover"),
+            )
 
         instance.save()
         instance.ensure_role_profile()
@@ -107,9 +129,20 @@ class AdopterAccountUpdateSerializer(serializers.ModelSerializer):
             AdopterProfile.objects.update_or_create(user=instance, defaults=profile_data)
         return instance
 
-    def _build_avatar_public_id(self, user):
-        base_name = slugify(user.name or user.email or user.phone or "adopter-avatar")
-        return base_name or f"adopter-avatar-{uuid4().hex[:8]}"
+    def _handle_image_upload(self, image_file, current_url, folder, public_id):
+        if image_file is None:
+            if current_url:
+                delete_image(image_url=current_url)
+            return ""
+
+        if current_url:
+            delete_image(image_url=current_url)
+        upload = upload_image(image_file, folder=folder, public_id=public_id)
+        return upload["url"]
+
+    def _build_image_public_id(self, user, image_type):
+        base_name = slugify(user.username or user.name or user.email or user.phone or f"adopter-{image_type}")
+        return base_name or f"adopter-{image_type}-{uuid4().hex[:8]}"
 
 
 class AdopterAdoptionRequestCreateSerializer(AdoptionRequestCreateSerializer):
@@ -183,7 +216,9 @@ class PublicAdopterSummarySerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "name",
+            "username",
             "avatar",
+            "cover",
             "bio",
             "location",
             "is_verified",

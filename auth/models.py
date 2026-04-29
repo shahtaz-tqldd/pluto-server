@@ -19,6 +19,11 @@ phone_regex = RegexValidator(
 )
 
 
+def validate_bio_word_limit(value):
+    if value and len(value.split()) > 80:
+        raise ValidationError(_("Bio cannot exceed 80 words."))
+
+
 class UserRole(models.TextChoices):
     ADOPTER = "ADOPTER", _("Adopter")
     RESCUER = "RESCUER", _("Rescuer")
@@ -57,11 +62,14 @@ class UserManager(BaseUserManager):
 
     def _create_user(self, email=None, password=None, **extra_fields):
         phone = extra_fields.get("phone")
-        if not email and not phone:
-            raise ValueError("Either email or phone is required.")
+        username = extra_fields.get("username")
+        if not email and not username and not phone:
+            raise ValueError("Either email, username, or phone is required.")
 
         if email:
             email = self.normalize_email(email)
+        if username:
+            extra_fields["username"] = username.strip().lower()
 
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
@@ -105,6 +113,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         verbose_name=_("User Role"),
     )
     name = models.CharField(max_length=150, verbose_name=_("Name"))
+    username = models.CharField(
+        unique=True,
+        max_length=150,
+        null=True,
+        blank=True,
+        verbose_name=_("Username"),
+    )
     email = models.EmailField(
         unique=True,
         null=True,
@@ -121,7 +136,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         verbose_name=_("Phone Number"),
     )
     avatar = models.URLField(blank=True, verbose_name=_("Avatar URL"))
-    bio = models.TextField(blank=True, verbose_name=_("Bio"))
+    cover = models.URLField(blank=True, verbose_name=_("Cover URL"))
+    bio = models.TextField(blank=True, validators=[validate_bio_word_limit], verbose_name=_("Bio"))
     location = models.CharField(max_length=120, blank=True, verbose_name=_("Location"))
     is_verified = models.BooleanField(default=False, verbose_name=_("Verified"))
     status = models.CharField(
@@ -147,8 +163,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         ordering = ["-created_at"]
         constraints = [
             models.CheckConstraint(
-                condition=Q(email__isnull=False) | Q(phone__isnull=False),
-                name="user_requires_email_or_phone",
+                condition=Q(email__isnull=False) | Q(username__isnull=False) | Q(phone__isnull=False),
+                name="user_requires_email_username_or_phone",
             ),
         ]
 
@@ -160,13 +176,16 @@ class User(AbstractBaseUser, PermissionsMixin):
         super().clean()
         if self.email:
             self.email = self.__class__.objects.normalize_email(self.email)
-        if not self.email and not self.phone:
-            raise ValidationError(_("Either email or phone is required."))
+        if self.username:
+            self.username = self.username.strip().lower()
+        if not self.email and not self.username and not self.phone:
+            raise ValidationError(_("Either email, username, or phone is required."))
         if self.role == UserRole.ADMIN:
             self.is_staff = True
 
     def save(self, *args, **kwargs):
         self.email = self.email or None
+        self.username = self.username or None
         self.phone = self.phone or None
         super().save(*args, **kwargs)
 
