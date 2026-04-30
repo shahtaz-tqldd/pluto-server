@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from app.base.pagination import CustomPagination
 from app.utils.response import APIResponse
-from pets.models import Pet
+from pets.models import Pet, PetStatus
 from pets.permissions import IsPetOwnerOrAdmin, IsRescuer
 from pets.api.v1.serializers import PetFeedSerializer, PetSerializer, PetWriteSerializer
 
@@ -31,6 +31,60 @@ class PetListCreateAPIView(GenericAPIView):
             data=PetSerializer(pet).data,
             message="Pet listed successfully.",
             status=status.HTTP_201_CREATED,
+        )
+
+
+class RescuerPetListAPIView(GenericAPIView):
+    pagination_class = CustomPagination
+    permission_classes = [IsAuthenticated, IsRescuer]
+
+    def get_queryset(self):
+        queryset = (
+            Pet.objects.select_related("rescuer")
+            .prefetch_related(Prefetch("images"))
+            .filter(rescuer=self.request.user)
+            .annotate(
+                interested_count=Count("interests", distinct=True),
+                active_conversation_count=Count(
+                    "message_threads",
+                    filter=Q(message_threads__status="ACTIVE"),
+                    distinct=True,
+                ),
+            )
+            .order_by("-created_at")
+        )
+
+        status_param = self.request.query_params.get("status", "").strip().lower()
+        if status_param:
+            allowed_statuses = {
+                "available": PetStatus.AVAILABLE,
+                "adopted": PetStatus.ADOPTED,
+            }
+            queryset = queryset.filter(status=allowed_statuses[status_param])
+
+        return queryset
+
+    def get(self, request, *args, **kwargs):
+        status_param = request.query_params.get("status", "").strip().lower()
+        if status_param and status_param not in {"available", "adopted"}:
+            return APIResponse.error(
+                message="Invalid status filter. Use available or adopted.",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        queryset = self.get_queryset()
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(queryset, request, view=self)
+        serializer = PetSerializer(page, many=True)
+        return APIResponse.success(
+            data=serializer.data,
+            meta={
+                "page": paginator.page.number,
+                "page_size": paginator.get_page_size(request),
+                "total_pages": paginator.page.paginator.num_pages,
+                "total_items": paginator.page.paginator.count,
+            },
+            message="My pets fetched successfully.",
         )
 
 
